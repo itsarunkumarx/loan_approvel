@@ -1,0 +1,21 @@
+Applicant_Name,Age,Income,Loan_Amount,Credit_Score,Employment_Type,Loan_Approved
+Aarav Sharma,59,77761.0,417505,337,Salaried,0
+Diya Patel,49,141178.0,328226,487,Salaried,0
+Vivaan Kumar,35,56368.0,312805,356,Self-Employed,0
+Ananya Iyer,28,26783.0,218484,319,Salaried,0
+Advait Nair,41,131530.0,315064,572,Self-Employed,0
+Ishaan Verma,59,61914.0,295378,418,Self-Employed,0
+Rhea Sen,39,90507.0,391705,882,Salaried,1
+Kabir Reddy,43,147738.0,321090,815,Self-Employed,1
+Mira Joshi,31,99026.0,275314,520,Self-Employed,0
+Arjun Mehta,31,135893.0,488716,825,Salaried,1
+Aditi Rao,44,131255.0,285612,814,Salaried,1
+Rohan Gupta,56,130616.0,328453,635,Salaried,0
+Kavya Singh,44,87526.0,105230,354,Salaried,0
+Reyansh Mishra,23,90835.0,423966,799,Unemployed,1
+Pooja Bhat,42,65765.0,473243,835,,0
+Siddharth Bose,22,39956.0,424484,461,Self-Employed,0
+Tara Pillai,44,107895.0,109321,893,Salaried,1
+Dhruv Desai,50,66240.0,182028,458,,0
+Shreya Banerjee,58,141008.0,281447,487,Unemployed,0
+Aryan Malhotra,22,57148.0,386275,359,Self-Employed,0

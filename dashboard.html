@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loan Approval ML Evaluation & Batch Processor</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    input[type=range] { accent-color: #2563eb; }
+    .tab-btn.active {
+      background-color: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased p-4 md:p-6 min-h-screen">
+
+  <!-- Header -->
+  <header class="mb-6 pb-4 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Model Live: logistic_regression_model.pkl</span>
+        </span>
+        <span class="text-xs text-slate-400">Scikit-Learn Logistic Regression</span>
+      </div>
+      <h1 class="text-2xl font-bold mt-1 text-white tracking-tight">Loan Approval Batch Evaluation & Risk Analyzer</h1>
+      <p class="text-sm text-slate-400 mt-0.5">Upload a list of applicants to screen, assess eligibility, and view personalized applicant names and decisions.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="/docs" target="_blank" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-200 transition flex items-center gap-1">
+        <span>API Swagger</span>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+      </a>
+      <a href="/sample-csv" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition flex items-center gap-1 shadow-sm">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        <span>Download Sample CSV</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="flex items-center gap-2 mb-6 border-b border-slate-800 pb-3">
+    <button id="tabBatchBtn" class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold border border-slate-700 transition flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+      <span>Batch CSV Upload & Screening</span>
+    </button>
+    <button id="tabSingleBtn" class="tab-btn px-4 py-2 rounded-lg text-xs font-bold border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+      <span>Single Applicant Simulator</span>
+    </button>
+  </div>
+
+  <!-- TAB 1: BATCH EVALUATION -->
+  <div id="tabBatchContent" class="space-y-6">
+
+    <!-- Upload Card -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-sm">
+      <div class="max-w-2xl mx-auto text-center">
+        <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-8 cursor-pointer transition bg-slate-950/50 group">
+          <input type="file" id="fileInput" accept=".csv" class="hidden">
+          <div class="w-12 h-12 mx-auto rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-3 group-hover:scale-110 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+          </div>
+          <h3 class="text-base font-semibold text-white">Upload Loan Applied People List (.CSV)</h3>
+          <p class="text-xs text-slate-400 mt-1">Drag and drop your CSV file here, or click to browse. Automatically extracts applicant <strong>Names</strong> and credentials.</p>
+          <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] text-slate-300">Name / Full_Name</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] text-slate-300">Age</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] text-slate-300">Income</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] text-slate-300">Loan_Amount</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] text-slate-300">Credit_Score</span>
+            <span class="px-2 py-0.5 rounded bg-slate-800 text-[11px] text-slate-300">Employment_Type</span>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs">
+          <span class="text-slate-500">Quick tests:</span>
+          <button id="testNamedSampleBtn" class="font-semibold text-emerald-400 hover:text-emerald-300 underline flex items-center gap-1">
+            <span>📄 Test with Named Applicants File</span>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </button>
+          <span class="text-slate-600">•</span>
+          <button id="testSampleBtn" class="font-semibold text-blue-400 hover:text-blue-300 underline flex items-center gap-1">
+            <span>📄 Test with 1,000 Applicants Dataset</span>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </button>
+        </div>
+
+        <!-- Loading spinner -->
+        <div id="uploadSpinner" class="hidden mt-4 p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs flex items-center justify-center gap-2">
+          <svg class="animate-spin h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Screening applicant details and calculating approval probabilities...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Batch Results Section (Hidden until uploaded) -->
+    <div id="batchResultsSection" class="hidden space-y-6">
+
+      <!-- KPI Summary Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Total Evaluated</div>
+          <div id="kpiTotal" class="text-2xl font-bold text-white mt-1">0</div>
+          <div id="kpiFilename" class="text-[11px] text-slate-400 mt-1 truncate">file.csv</div>
+        </div>
+        <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+          <div class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Eligible (Approved)</div>
+          <div id="kpiApproved" class="text-2xl font-bold text-emerald-400 mt-1">0</div>
+          <div id="kpiAppPct" class="text-[11px] text-emerald-300 font-medium mt-1">0.0% of cohort</div>
+        </div>
+        <div class="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4">
+          <div class="text-[11px] font-semibold text-rose-400 uppercase tracking-wider">Ineligible (Rejected)</div>
+          <div id="kpiRejected" class="text-2xl font-bold text-rose-400 mt-1">0</div>
+          <div id="kpiRejPct" class="text-[11px] text-rose-300 font-medium mt-1">0.0% of cohort</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Avg Approved Credit</div>
+          <div id="kpiAvgCredit" class="text-2xl font-bold text-blue-400 mt-1">--</div>
+          <div class="text-[11px] text-slate-400 mt-1">Prime average</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Avg Approved Income</div>
+          <div id="kpiAvgIncome" class="text-2xl font-bold text-emerald-400 mt-1">--</div>
+          <div class="text-[11px] text-slate-400 mt-1">Annual salary</div>
+        </div>
+      </div>
+
+      <!-- Table Toolbar & Filters -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-semibold text-white">Screened Applicants Roster</h2>
+              <span id="nameBadge" class="hidden px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Names Detected</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Showing who is eligible for approval and who was rejected with model confidence.</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="downloadCsvBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1.5 shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              <span>Export Results to CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+          <div class="flex items-center gap-2">
+            <button onclick="setFilter('ALL')" id="fltAll" class="filter-btn px-3 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white">All (<span id="cntAll">0</span>)</button>
+            <button onclick="setFilter('APPROVED')" id="fltApp" class="filter-btn px-3 py-1 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Eligible (<span id="cntApp">0</span>)</button>
+            <button onclick="setFilter('REJECTED')" id="fltRej" class="filter-btn px-3 py-1 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">Rejected (<span id="cntRej">0</span>)</button>
+            <button onclick="setFilter('HIGH_RISK')" id="fltHigh" class="filter-btn px-3 py-1 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">High Risk (<span id="cntHigh">0</span>)</button>
+          </div>
+
+          <div class="relative w-full sm:w-72">
+            <input type="text" id="searchInput" placeholder="Search by name, ID, or income..." class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+            <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="overflow-x-auto rounded-lg border border-slate-800">
+          <table class="w-full text-left text-xs text-slate-200">
+            <thead class="bg-slate-950 text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-800">
+              <tr>
+                <th class="py-2.5 px-3">Applicant Name & ID</th>
+                <th class="py-2.5 px-3">Age</th>
+                <th class="py-2.5 px-3">Annual Income</th>
+                <th class="py-2.5 px-3">Loan Amount</th>
+                <th class="py-2.5 px-3">Credit Score</th>
+                <th class="py-2.5 px-3">Employment</th>
+                <th class="py-2.5 px-3 text-center">Eligibility Decision</th>
+                <th class="py-2.5 px-3 text-center">Probability</th>
+                <th class="py-2.5 px-3 text-center">Risk Tier</th>
+              </tr>
+            </thead>
+            <tbody id="batchTableBody" class="divide-y divide-slate-800/60 font-mono">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-slate-400 pt-2">
+          <div id="tableShowingCount">Showing 0 of 0 records</div>
+          <div class="flex items-center gap-1">
+            <button id="prevPageBtn" class="px-2.5 py-1 rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-30">Prev</button>
+            <span id="pageInfo" class="px-2">Page 1 of 1</span>
+            <button id="nextPageBtn" class="px-2.5 py-1 rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-30">Next</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- TAB 2: SINGLE APPLICANT SIMULATOR -->
+  <div id="tabSingleContent" class="hidden space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left Column: Sliders (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+            <div>
+              <h2 class="text-base font-semibold text-white">Single Applicant Live Tester</h2>
+              <p class="text-xs text-slate-400">Evaluate custom applicant profiles in real-time.</p>
+            </div>
+            <button id="resetSingleBtn" class="px-3 py-1 text-xs rounded-lg border border-slate-700 hover:bg-slate-800 transition text-slate-300">Reset</button>
+          </div>
+
+          <!-- Name input -->
+          <div class="mb-4">
+            <label class="text-xs font-medium text-slate-300 block mb-1">Applicant Name</label>
+            <input type="text" id="applicantNameInput" value="John Doe" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div class="space-y-1.5 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+              <div class="flex justify-between items-center">
+                <label class="font-medium text-slate-200">Credit Score</label>
+                <span id="creditVal" class="font-bold text-sm text-blue-400 font-mono">720</span>
+              </div>
+              <input id="creditInput" type="range" min="300" max="899" value="720" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+            </div>
+
+            <div class="space-y-1.5 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+              <div class="flex justify-between items-center">
+                <label class="font-medium text-slate-200">Annual Income</label>
+                <span id="incomeVal" class="font-bold text-sm text-emerald-400 font-mono">$85,000</span>
+              </div>
+              <input id="incomeInput" type="range" min="20000" max="150000" step="1000" value="85000" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+            </div>
+
+            <div class="space-y-1.5 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+              <div class="flex justify-between items-center">
+                <label class="font-medium text-slate-200">Requested Loan</label>
+                <span id="loanVal" class="font-bold text-sm text-amber-400 font-mono">$250,000</span>
+              </div>
+              <input id="loanInput" type="range" min="50000" max="500000" step="5000" value="250000" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+            </div>
+
+            <div class="space-y-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+              <div class="flex justify-between items-center">
+                <label class="font-medium text-slate-200">Applicant Age</label>
+                <span id="ageVal" class="font-bold text-sm text-slate-100 font-mono">35 yrs</span>
+              </div>
+              <input id="ageInput" type="range" min="21" max="65" value="35" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+              
+              <div class="pt-2 border-t border-slate-800">
+                <label class="font-medium text-slate-200 block mb-1">Employment Type</label>
+                <select id="empSelect" class="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-slate-200 focus:outline-none">
+                  <option value="Salaried" selected>Salaried</option>
+                  <option value="Self-Employed">Self-Employed</option>
+                  <option value="Unemployed">Unemployed</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Single Prediction Result -->
+          <div id="resultCard" class="mt-5 p-4 rounded-xl border bg-emerald-500/10 border-emerald-500/30">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <span id="resApplicantName" class="font-bold text-white">John Doe</span>
+                  <span class="text-slate-500">•</span>
+                  <span id="riskBadge" class="px-2 py-0.2 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">Moderate Risk</span>
+                </div>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span id="verdictBadge" class="text-2xl font-extrabold text-emerald-400 tracking-tight">APPROVED</span>
+                  <span id="probBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold font-mono">Probability: --%</span>
+                </div>
+                <div id="verdictSummary" class="text-xs text-slate-400 mt-1.5">Applicant meets credit and income criteria.</div>
+              </div>
+
+              <div class="w-full sm:w-44 flex flex-col justify-center">
+                <div class="flex justify-between text-[11px] font-medium text-slate-400 mb-1">
+                  <span>0%</span>
+                  <span class="font-semibold text-slate-200">50% Cutoff</span>
+                  <span>100%</span>
+                </div>
+                <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden relative">
+                  <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-red-400/60 z-10"></div>
+                  <div id="probBar" class="h-full bg-emerald-500 transition-all rounded-full" style="width: 0%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right Column: Weights (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm">
+          <h2 class="text-base font-semibold text-white mb-2">Primary Decision Factors</h2>
+          <div class="space-y-3 text-xs">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-semibold text-slate-200">Credit Score</span>
+                <span class="text-emerald-400 font-bold font-mono">Odds: 4.25x</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-2"><div class="bg-blue-500 h-2 rounded-full" style="width: 100%;"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-semibold text-slate-200">Income</span>
+                <span class="text-emerald-400 font-bold font-mono">Odds: 2.36x</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-2"><div class="bg-emerald-500 h-2 rounded-full" style="width: 59%;"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-semibold text-slate-200">Unemployment Penalty</span>
+                <span class="text-rose-400 font-bold font-mono">Odds: 0.71x</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-2"><div class="bg-rose-500 h-2 rounded-full" style="width: 24%;"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    const tabBatchBtn = document.getElementById('tabBatchBtn');
+    const tabSingleBtn = document.getElementById('tabSingleBtn');
+    const tabBatchContent = document.getElementById('tabBatchContent');
+    const tabSingleContent = document.getElementById('tabSingleContent');
+
+    tabBatchBtn.addEventListener('click', () => {
+      tabBatchBtn.className = "tab-btn active px-4 py-2 rounded-lg text-xs font-bold border border-blue-600 bg-blue-600 text-white transition flex items-center gap-2";
+      tabSingleBtn.className = "tab-btn px-4 py-2 rounded-lg text-xs font-bold border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2";
+      tabBatchContent.classList.remove('hidden');
+      tabSingleContent.classList.add('hidden');
+    });
+
+    tabSingleBtn.addEventListener('click', () => {
+      tabSingleBtn.className = "tab-btn active px-4 py-2 rounded-lg text-xs font-bold border border-blue-600 bg-blue-600 text-white transition flex items-center gap-2";
+      tabBatchBtn.className = "tab-btn px-4 py-2 rounded-lg text-xs font-bold border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-900 transition flex items-center gap-2";
+      tabSingleContent.classList.remove('hidden');
+      tabBatchContent.classList.add('hidden');
+      triggerSinglePrediction();
+    });
+
+    // BATCH UPLOAD LOGIC
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadSpinner = document.getElementById('uploadSpinner');
+    const testSampleBtn = document.getElementById('testSampleBtn');
+    const testNamedSampleBtn = document.getElementById('testNamedSampleBtn');
+    const batchResultsSection = document.getElementById('batchResultsSection');
+    const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+    const nameBadge = document.getElementById('nameBadge');
+
+    let allBatchRecords = [];
+    let currentFilter = 'ALL';
+    let currentPage = 1;
+    const pageSize = 15;
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-blue-500'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-blue-500'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-blue-500');
+      if (e.dataTransfer.files.length > 0) {
+        uploadFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        uploadFile(fileInput.files[0]);
+      }
+    });
+
+    // Test with Named Sample File
+    testNamedSampleBtn.addEventListener('click', async () => {
+      try {
+        uploadSpinner.classList.remove('hidden');
+        const res = await fetch('/sample-csv');
+        const blob = await res.blob();
+        const file = new File([blob], "sample_applicants_with_names.csv", { type: "text/csv" });
+        await uploadFile(file);
+      } catch (err) {
+        alert('Failed to load sample CSV: ' + err);
+        uploadSpinner.classList.add('hidden');
+      }
+    });
+
+    testSampleBtn.addEventListener('click', async () => {
+      try {
+        uploadSpinner.classList.remove('hidden');
+        const res = await fetch('/sample-csv');
+        const blob = await res.blob();
+        const file = new File([blob], "loan_approval_1000.csv", { type: "text/csv" });
+        await uploadFile(file);
+      } catch (err) {
+        alert('Failed to load sample CSV: ' + err);
+        uploadSpinner.classList.add('hidden');
+      }
+    });
+
+    async function uploadFile(file) {
+      uploadSpinner.classList.remove('hidden');
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/predict-batch', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || 'Upload failed');
+        }
+
+        const data = await response.json();
+        renderBatchResults(data);
+      } catch (err) {
+        alert('Error processing file: ' + err.message);
+      } finally {
+        uploadSpinner.classList.add('hidden');
+      }
+    }
+
+    function renderBatchResults(data) {
+      allBatchRecords = data.records;
+      batchResultsSection.classList.remove('hidden');
+
+      if (data.has_names) {
+        nameBadge.classList.remove('hidden');
+      } else {
+        nameBadge.classList.add('hidden');
+      }
+
+      // KPIs
+      document.getElementById('kpiTotal').textContent = data.total_applicants.toLocaleString();
+      document.getElementById('kpiFilename').textContent = data.filename;
+      document.getElementById('kpiApproved').textContent = data.approved_count.toLocaleString();
+      document.getElementById('kpiAppPct').textContent = `${data.approval_rate}% of cohort`;
+      document.getElementById('kpiRejected').textContent = data.rejected_count.toLocaleString();
+      const rejPct = (100 - data.approval_rate).toFixed(1);
+      document.getElementById('kpiRejPct').textContent = `${rejPct}% of cohort`;
+      document.getElementById('kpiAvgCredit').textContent = data.avg_approved_credit ? Math.round(data.avg_approved_credit) : '--';
+      document.getElementById('kpiAvgIncome').textContent = data.avg_approved_income ? '$' + Math.round(data.avg_approved_income).toLocaleString() : '--';
+
+      // Counts on filter buttons
+      document.getElementById('cntAll').textContent = data.total_applicants;
+      document.getElementById('cntApp').textContent = data.approved_count;
+      document.getElementById('cntRej').textContent = data.rejected_count;
+      const highCount = allBatchRecords.filter(r => r.Risk_Tier === 'High Risk').length;
+      document.getElementById('cntHigh').textContent = highCount;
+
+      currentPage = 1;
+      updateTable();
+      batchResultsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function setFilter(flt) {
+      currentFilter = flt;
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.className = "filter-btn px-3 py-1 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700";
+      });
+      if (flt === 'ALL') document.getElementById('fltAll').className = "filter-btn px-3 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white";
+      if (flt === 'APPROVED') document.getElementById('fltApp').className = "filter-btn px-3 py-1 rounded-md text-xs font-semibold bg-emerald-600 text-white";
+      if (flt === 'REJECTED') document.getElementById('fltRej').className = "filter-btn px-3 py-1 rounded-md text-xs font-semibold bg-rose-600 text-white";
+      if (flt === 'HIGH_RISK') document.getElementById('fltHigh').className = "filter-btn px-3 py-1 rounded-md text-xs font-semibold bg-amber-600 text-white";
+      currentPage = 1;
+      updateTable();
+    }
+
+    document.getElementById('searchInput').addEventListener('input', () => {
+      currentPage = 1;
+      updateTable();
+    });
+
+    function getFilteredRecords() {
+      const q = document.getElementById('searchInput').value.toLowerCase().trim();
+      return allBatchRecords.filter(r => {
+        if (currentFilter === 'APPROVED' && r.Model_Decision !== 'APPROVED') return false;
+        if (currentFilter === 'REJECTED' && r.Model_Decision !== 'REJECTED') return false;
+        if (currentFilter === 'HIGH_RISK' && r.Risk_Tier !== 'High Risk') return false;
+
+        if (q) {
+          const combined = `${r.Applicant_Name || ''} ${r.Applicant_ID || ''} ${r.Display_Age || ''} ${r.Display_Income || ''} ${r.Display_Credit_Score || ''} ${r.Display_Employment || ''} ${r.Model_Decision || ''}`.toLowerCase();
+          return combined.includes(q);
+        }
+        return true;
+      });
+    }
+
+    function updateTable() {
+      const records = getFilteredRecords();
+      const total = records.length;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const start = (currentPage - 1) * pageSize;
+      const paged = records.slice(start, start + pageSize);
+
+      const tbody = document.getElementById('batchTableBody');
+      tbody.innerHTML = '';
+
+      if (paged.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-slate-500">No applicants matching search or filter.</td></tr>`;
+      } else {
+        paged.forEach(r => {
+          const isApp = r.Model_Decision === 'APPROVED';
+          const prob = parseFloat(r.Approval_Probability || 0);
+
+          let riskColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
+          if (r.Risk_Tier === 'High Risk') riskColor = 'text-rose-400 bg-rose-500/10 border-rose-500/30';
+          else if (r.Risk_Tier === 'Moderate Risk') riskColor = 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-900/60 transition";
+          tr.innerHTML = `
+            <td class="py-2.5 px-3">
+              <div class="font-bold text-sm text-white">${r.Applicant_Name || 'Applicant'}</div>
+              <div class="text-[10px] text-slate-400 font-mono tracking-tight">${r.Applicant_ID || '--'}</div>
+            </td>
+            <td class="py-2.5 px-3 font-normal">${r.Display_Age || r.Age || '--'}</td>
+            <td class="py-2.5 px-3 font-normal text-emerald-400 font-semibold">$${Number(r.Display_Income || r.Income || 0).toLocaleString()}</td>
+            <td class="py-2.5 px-3 font-normal text-slate-300">$${Number(r.Display_Loan_Amount || r.Loan_Amount || 0).toLocaleString()}</td>
+            <td class="py-2.5 px-3 font-bold ${Number(r.Display_Credit_Score || r.Credit_Score) >= 680 ? 'text-blue-400' : 'text-slate-400'}">${r.Display_Credit_Score || r.Credit_Score || '--'}</td>
+            <td class="py-2.5 px-3 font-normal text-slate-300">${r.Display_Employment || r.Employment_Type || '--'}</td>
+            <td class="py-2.5 px-3 text-center">
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold ${isApp ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}">
+                ${isApp ? '✓ ELIGIBLE' : '✗ REJECTED'}
+              </span>
+            </td>
+            <td class="py-2.5 px-3 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <div class="w-12 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div class="${isApp ? 'bg-emerald-400' : 'bg-rose-400'} h-1.5 rounded-full" style="width: ${prob}%"></div>
+                </div>
+                <span class="text-[11px] font-bold ${isApp ? 'text-emerald-400' : 'text-rose-400'}">${prob.toFixed(1)}%</span>
+              </div>
+            </td>
+            <td class="py-2.5 px-3 text-center">
+              <span class="px-2 py-0.5 rounded text-[10px] font-medium border ${riskColor}">${r.Risk_Tier || '--'}</span>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      document.getElementById('tableShowingCount').textContent = `Showing ${Math.min(total, start + 1)} to ${Math.min(total, start + pageSize)} of ${total} applicants`;
+      document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+      document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+      document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
+    }
+
+    document.getElementById('prevPageBtn').addEventListener('click', () => {
+      if (currentPage > 1) { currentPage--; updateTable(); }
+    });
+    document.getElementById('nextPageBtn').addEventListener('click', () => {
+      currentPage++; updateTable();
+    });
+
+    // Export CSV Download
+    downloadCsvBtn.addEventListener('click', () => {
+      if (allBatchRecords.length === 0) return;
+      const keys = Object.keys(allBatchRecords[0]);
+      let csvContent = "data:text/csv;charset=utf-8," + keys.join(",") + "\n";
+      allBatchRecords.forEach(row => {
+        const line = keys.map(k => `"${(row[k] ?? '').toString().replace(/"/g, '""')}"`).join(",");
+        csvContent += line + "\n";
+      });
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "loan_evaluated_applicants.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // SINGLE SIMULATOR LOGIC
+    const creditInput = document.getElementById('creditInput');
+    const incomeInput = document.getElementById('incomeInput');
+    const loanInput = document.getElementById('loanInput');
+    const ageInput = document.getElementById('ageInput');
+    const empSelect = document.getElementById('empSelect');
+    const applicantNameInput = document.getElementById('applicantNameInput');
+
+    async function triggerSinglePrediction() {
+      const payload = {
+        Name: applicantNameInput.value.trim() || 'Applicant',
+        Age: parseInt(ageInput.value, 10),
+        Income: parseFloat(incomeInput.value),
+        Loan_Amount: parseFloat(loanInput.value),
+        Credit_Score: parseInt(creditInput.value, 10),
+        Employment_Type: empSelect.value
+      };
+
+      document.getElementById('creditVal').textContent = payload.Credit_Score;
+      document.getElementById('incomeVal').textContent = '$' + payload.Income.toLocaleString();
+      document.getElementById('loanVal').textContent = '$' + payload.Loan_Amount.toLocaleString();
+      document.getElementById('ageVal').textContent = payload.Age + ' yrs';
+      document.getElementById('resApplicantName').textContent = payload.Name;
+
+      try {
+        const res = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        const probPct = (data.probability * 100).toFixed(1);
+
+        document.getElementById('probBar').style.width = probPct + '%';
+        document.getElementById('probBadge').textContent = `Probability: ${probPct}%`;
+        document.getElementById('riskBadge').textContent = data.risk_score;
+
+        if (data.approved) {
+          document.getElementById('verdictBadge').textContent = 'APPROVED';
+          document.getElementById('verdictBadge').className = 'text-2xl font-extrabold text-emerald-400 tracking-tight';
+          document.getElementById('resultCard').className = 'mt-5 p-4 rounded-xl border bg-emerald-500/10 border-emerald-500/30';
+          document.getElementById('verdictSummary').textContent = `${payload.Name} meets all credit and income criteria (${probPct}% approval probability).`;
+        } else {
+          document.getElementById('verdictBadge').textContent = 'REJECTED';
+          document.getElementById('verdictBadge').className = 'text-2xl font-extrabold text-rose-400 tracking-tight';
+          document.getElementById('resultCard').className = 'mt-5 p-4 rounded-xl border bg-rose-500/10 border-rose-500/30';
+          document.getElementById('verdictSummary').textContent = `${payload.Name} does not meet minimum risk criteria (${probPct}% < 50%).`;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    [creditInput, incomeInput, loanInput, ageInput, empSelect].forEach(el => {
+      el.addEventListener('input', triggerSinglePrediction);
+    });
+    applicantNameInput.addEventListener('input', triggerSinglePrediction);
+
+    document.getElementById('resetSingleBtn').addEventListener('click', () => {
+      applicantNameInput.value = 'John Doe';
+      creditInput.value = 720;
+      incomeInput.value = 85000;
+      loanInput.value = 250000;
+      ageInput.value = 35;
+      empSelect.value = 'Salaried';
+      triggerSinglePrediction();
+    });
+  </script>
+</body>
+</html>
